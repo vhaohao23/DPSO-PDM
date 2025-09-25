@@ -7,6 +7,9 @@ random_device rd;
 mt19937 gen(rd());
 
 const int N=20;
+const int T=20;
+const double mutationProb=0.1;
+
 int n,m;
 vector<vector<int>> E;
 vector<vector<int>> P(N+1);
@@ -76,15 +79,64 @@ void initialization(){
     } 
 }
 
+void mutation(vector<int> &Pbi){
+    uniform_real_distribution<double> rand_dist(0.0, 1.0);
+    bool dd[n+1]={};
+
+    for (int k = 1; k <= n; k++) {
+        double random_value = rand_dist(gen);
+        
+        if (random_value <= mutationProb) {
+            // Find the community with largest modularity increment among neighbors
+            int best_community = Pbi[k];
+            double best_increment = 0;
+            
+            // Calculate original modularity
+            double orig_mod = modularity(Pbi);
+            dd[Pbi[k]] = 1;
+            for (int neighbor : E[k]) {
+                int l_neigh = Pbi[neighbor];
+                if (dd[l_neigh]) continue;
+                dd[l_neigh] = 1;
+                
+                // Try moving node k to community l_neigh
+                int original_community = Pbi[k];
+                Pbi[k] = l_neigh;
+                
+                // Calculate new modularity
+                double new_mod = modularity(Pbi);
+                
+                // Calculate increment
+                double increment = new_mod - orig_mod;
+                
+                if (increment > best_increment) {
+                    best_increment = increment;
+                    best_community = l_neigh;
+                }
+                
+                // Restore original community
+                Pbi[k] = original_community;
+            }
+            
+            // Apply mutation to the best community found
+            if (best_community != Pbi[k]) {
+                Pbi[k] = best_community;
+            }
+        }
+    }
+}
+
 void DPSO_PDM(){
 
 }
 int main(){
     cin>>n>>m;
-    int u,v;
+
     E.resize(n+1);
     k.resize(n+1);
     A.resize(n+1,vector<int>(n+1,0));
+    
+    int u,v;
     rep(i,1,m,1){
         cin>>u>>v;
         E[u].push_back(v);
