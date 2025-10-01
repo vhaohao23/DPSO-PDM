@@ -9,6 +9,8 @@ mt19937 gen(rd());
 const int N=20;
 const int T=20;
 const double mutationProb=0.1;
+const double inertiaWmin=0.6;
+const double inertiaWmax=0.8;
 
 int n,m;
 vector<vector<int>> E;
@@ -17,6 +19,8 @@ vector<vector<int>> Pb(N+1);
 vector<int> Pg;
 vector<int> Q(N+1,0);
 vector<int> Qb(N+1,0);
+vector<vector<int>> V;
+
 int Qg=0;
 vector<int> k;
 vector<vector<int>> A;
@@ -83,7 +87,7 @@ void mutation(vector<int> &Pbi){
     uniform_real_distribution<double> rand_dist(0.0, 1.0);
     bool dd[n+1]={};
 
-    for (int k = 1; k <= n; k++) {
+    rep(k,1,n,1) {
         double random_value = rand_dist(gen);
         
         if (random_value <= mutationProb) {
@@ -124,18 +128,58 @@ void mutation(vector<int> &Pbi){
             }
         }
     }
+}       
+
+void standardization(vector<int> &Pb){
+    map<int,int> mp;
+    int cnt=0;
+    rep(i,1,n,1)
+        if (!mp[Pb[i]])
+            mp[Pb[i]]=++cnt;
+    rep(i,1,n,1)
+        Pb[i]=mp[Pb[i]];
 }
 
-void DPSO_PDM(){
-
+int Div(vector<int> Pbi){
+    int res=0;
+    rep(k,1,n,1){
+        res+=(Pbi[k]!=Pg[k]);
+    }
+    return res;
 }
+
+vector<int> subtraction(vector<int> p1,vector<int> p2){
+    vector<int> resV(n+1,0);
+    rep(i,1,n,1)
+        resV[i]=(p1[i]!=p2[i]);
+    
+    return resV;
+}
+
+vector<double> multiplication(vector<int> v,double rc){
+    vector<double> res(v.begin(),v.end());
+    rep(i,1,n,1)
+        res[i]*=rc;
+    
+    return res;
+}
+
+vector<double> merge(vector<double> v1,vector<double> v2){
+    vector<double> res(n+1,0);
+    rep(i,1,n,1)
+        res[i]=(v1[i]+v2[i]>=1);
+    
+    return res;
+}
+
 int main(){
     cin>>n>>m;
 
     E.resize(n+1);
     k.resize(n+1);
     A.resize(n+1,vector<int>(n+1,0));
-    
+    V.resize(N+1,vector<int>(n+1,0));
+
     int u,v;
     rep(i,1,m,1){
         cin>>u>>v;
