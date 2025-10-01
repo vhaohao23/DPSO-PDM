@@ -9,8 +9,8 @@ mt19937 gen(rd());
 const int N=20;
 const int T=20;
 const double mutationProb=0.1;
-const double inertiaWmin=0.6;
-const double inertiaWmax=0.8;
+const double wMin=0.6;
+const double wMax=0.8;
 
 int n,m;
 vector<vector<int>> E;
@@ -140,12 +140,12 @@ void standardization(vector<int> &Pb){
         Pb[i]=mp[Pb[i]];
 }
 
-int Div(vector<int> Pbi){
+double Div(vector<int> Pbi){
     int res=0;
     rep(k,1,n,1){
         res+=(Pbi[k]!=Pg[k]);
     }
-    return res;
+    return double(res)/double(n);
 }
 
 vector<int> subtraction(vector<int> p1,vector<int> p2){
@@ -168,6 +168,48 @@ vector<double> merge(vector<double> v1,vector<double> v2){
     vector<double> res(n+1,0);
     rep(i,1,n,1)
         res[i]=(v1[i]+v2[i]>=1);
+    
+    return res;
+}
+
+vector<int> addition(int t){
+    vector<int> res = P[t];
+    
+    // For each vertex
+    for(int i = 1; i <= n; i++) {
+        // Only modify if V[t][i] = 1
+        if(V[t][i] == 1) {
+            // Find the most frequent community among neighbors
+            map<int, int> comm_count;
+            int max_count = 0;
+            int max_comm = res[i]; // Default to current community
+            
+            for(int neighbor : E[i]) {
+                comm_count[P[t][neighbor]]++;
+                if(comm_count[P[t][neighbor]] > max_count) {
+                    max_count = comm_count[P[t][neighbor]];
+                    max_comm = P[t][neighbor];
+                }
+            }
+            
+            // Assign the most frequent community value to this vertex
+            res[i] = max_comm;
+        }
+        // If V[t][i] = 0, res[i] remains unchanged (already set to P[t][i])
+    }
+    
+    return res;
+}
+
+vector<int> multiplication(int i){
+    vector<int> res=V[i];
+    double wi=wMin+(wMax-wMin)*Div(Pb[i]);
+
+    // If wi < 0.64, leave res unchanged
+    // Otherwise, set all elements to 0
+    if (wi >= 0.64) {
+        fill(res.begin(), res.end(), 0);
+    }
     
     return res;
 }
