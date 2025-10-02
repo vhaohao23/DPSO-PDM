@@ -7,32 +7,58 @@ random_device rd;
 mt19937 gen(rd());
 
 const int N=20;
-const int T=20;
 const double mutationProb=0.1;
 const double wMin=0.6;
 const double wMax=0.8;
+const double c1=1.4961,c2=1.4961;
+
+int T=100;
 
 int n,m;
 vector<vector<int>> E;
 vector<vector<int>> P(N+1);
 vector<vector<int>> Pb(N+1);
 vector<int> Pg;
-vector<int> Q(N+1,0);
-vector<int> Qb(N+1,0);
-vector<vector<int>> V;
+vector<double> Q(N+1,0);
+vector<double> Qb(N+1,0);
+vector<vector<double>> V;
 
-int Qg=0;
-vector<int> k;
-vector<vector<int>> A;
+double Qg=0;
+vector<double> k;
+vector<vector<double>> A;
 
 double modularity(vector<int> l){
+    int S=0;
     double Q=0;
+    for (int label:l)
+        S=max(S,label);
+    
+    vector<int> cs[S+1];
 
     for (int i=1;i<=n;i++)
-        for (int j=1;j<=n;j++)
-                Q+=double(A[i][j]-k[i]*k[j]/double(2*m))*double(l[i]==l[j]);
-    return Q/double(2*m);
+        cs[l[i]].push_back(i);
+
+    for (auto c:cs){
+        double sumd=0;
+        for (int u:c){
+            sumd+=k[u];
+            for (int v:c)
+                if (u<v)
+                    Q+=double(A[u][v])/double(m);
+        }
+        Q-=pow(sumd/(2*m),2);
+    }
+    return Q;
 }
+
+// double modularity(vector<int> l){
+//     double Q=0;
+
+//     for (int i=1;i<=n;i++)
+//         for (int j=1;j<=n;j++)
+//                 Q+=double(A[i][j]-k[i]*k[j]/double(2*m))*double(l[i]==l[j]);
+//     return Q/double(2*m);
+// }
 
 void LAR_rand(vector<vector<int>> &a){
     rep(u,1,n,1){
@@ -130,14 +156,14 @@ void mutation(vector<int> &Pbi){
     }
 }       
 
-void standardization(vector<int> &Pb){
+void standardization(vector<int> &p){
     map<int,int> mp;
     int cnt=0;
     rep(i,1,n,1)
-        if (!mp[Pb[i]])
-            mp[Pb[i]]=++cnt;
+        if (!mp[p[i]])
+            mp[p[i]]=++cnt;
     rep(i,1,n,1)
-        Pb[i]=mp[Pb[i]];
+        p[i]=mp[p[i]];
 }
 
 double Div(vector<int> Pbi){
@@ -156,7 +182,7 @@ vector<int> subtraction(vector<int> p1,vector<int> p2){
     return resV;
 }
 
-vector<double> multiplication(vector<int> v,double rc){
+vector<double> multiplicationRcAndV(vector<int> v,double rc){
     vector<double> res(v.begin(),v.end());
     rep(i,1,n,1)
         res[i]*=rc;
@@ -167,7 +193,7 @@ vector<double> multiplication(vector<int> v,double rc){
 vector<double> merge(vector<double> v1,vector<double> v2){
     vector<double> res(n+1,0);
     rep(i,1,n,1)
-        res[i]=(v1[i]+v2[i]>=1);
+        res[i]=((v1[i]+v2[i])>=1);
     
     return res;
 }
@@ -201,8 +227,8 @@ vector<int> addition(int t){
     return res;
 }
 
-vector<int> multiplication(int i){
-    vector<int> res=V[i];
+vector<double> multiplicationWandV(int i){
+    vector<double> res=V[i];
     double wi=wMin+(wMax-wMin)*Div(Pb[i]);
 
     // If wi < 0.64, leave res unchanged
@@ -214,13 +240,62 @@ vector<int> multiplication(int i){
     return res;
 }
 
+void DPSO_PDM(){
+    initialization();
+
+    rep(i,1,N,1)
+        mutation(Pb[i]);
+    
+    while (T--){
+
+        //standardization
+        rep(i,1,N,1){
+            standardization(P[i]);
+            standardization(Pb[i]);
+        }
+        standardization(Pg);
+
+        //update each particle
+        uniform_real_distribution<double> randR(0.0,0.1);
+        rep(i,1,N,1){
+            vector<double> wVi=multiplicationWandV(i);
+            double r1=randR(gen),r2=randR(gen);
+            vector<double> V1=multiplicationRcAndV(subtraction(Pb[i],P[i]),r1*c1);  
+            vector<double> V2=multiplicationRcAndV(subtraction(Pg,P[i]),r2*c2);
+            
+            V[i]=merge(wVi,merge(V1,V2));
+            P[i]=addition(i);
+        }
+        
+
+        //calculate fitness and update the personal best and global best positions
+        rep(i,1,N,1){
+            Q[i]=modularity(P[i]);
+            if (Qb[i]<Q[i]){
+                Qb[i]=Q[i];
+                Pb[i]=P[i];
+            }
+
+            if (Qb[i]>Qg)
+                Qg=Qb[i],Pg=Pb[i];
+        }
+    }
+
+    cout<<Qg<<"\n";
+    rep(i,1,n,1)
+        cout<<Pg[i]<<" ";
+}
+
 int main(){
+    freopen("input.txt","r",stdin);
+    freopen("output.txt","w",stdout);
+
     cin>>n>>m;
 
     E.resize(n+1);
     k.resize(n+1);
-    A.resize(n+1,vector<int>(n+1,0));
-    V.resize(N+1,vector<int>(n+1,0));
+    A.resize(n+1,vector<double>(n+1,0));
+    V.resize(N+1,vector<double>(n+1,0));
 
     int u,v;
     rep(i,1,m,1){
@@ -230,4 +305,6 @@ int main(){
         A[u][v]=1,A[v][u]=1;
         k[u]++,k[v]++;
     }
+
+    DPSO_PDM();
 }
